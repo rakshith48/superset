@@ -41,18 +41,19 @@ jobs:
       - name: Install uv
         run: pip install --quiet "uv>=0.4"
 
-      - name: Regenerate base.txt to a temp file
+      - name: Regenerate base.txt in place
         run: |
           uv pip compile pyproject.toml requirements/base.in \
-            -o /tmp/base.regenerated.txt \
+            -o requirements/base.txt \
             --quiet
-          echo "Regenerated lock written to /tmp/base.regenerated.txt"
+          echo "Regeneration complete"
 
       - name: Diff against committed base.txt
         run: |
-          if diff -u requirements/base.txt /tmp/base.regenerated.txt; then
+          if git diff --quiet requirements/base.txt; then
             echo "✓ requirements/base.txt is consistent with the source files"
           else
+            git diff requirements/base.txt
             echo ""
             echo "::error::requirements/base.txt is OUT OF SYNC with pyproject.toml + requirements/base.in"
             echo "Run: uv pip compile pyproject.toml requirements/base.in -o requirements/base.txt"
