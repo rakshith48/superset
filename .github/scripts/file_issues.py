@@ -102,10 +102,26 @@ def main(findings_path: str) -> int:
     fixable = [f for f in findings if f.get("fixable")]
     print(f"{len(findings)} OSV findings, {len(fixable)} fixable")
 
+    # OSV can return the same CVE under multiple vuln_id aliases (e.g. both
+    # a PYSEC and a GHSA id pointing at the same CVE). Collapse to unique
+    # CVE ids within this run before doing anything else, otherwise we'd
+    # file duplicate issues on a fresh repo where GitHub search returns
+    # nothing for either alias.
+    seen_in_run: set[str] = set()
+    unique_fixable = []
+    for f in fixable:
+        cve = f["cve_id"]
+        if cve in seen_in_run:
+            print(f"  • {cve}: duplicate alias in this scan — collapsing")
+            continue
+        seen_in_run.add(cve)
+        unique_fixable.append(f)
+    print(f"{len(unique_fixable)} unique CVEs after in-run dedup")
+
     filed = 0
     skipped = 0
     failed = 0
-    for f in fixable:
+    for f in unique_fixable:
         cve = f["cve_id"]
         existing = existing_issue_for(cve)
         if existing:
